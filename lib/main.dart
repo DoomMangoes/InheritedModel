@@ -1,42 +1,162 @@
 import 'package:flutter/material.dart';
+import 'dart:math' show Random;
+import 'dart:developer' as devtools show log;
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // Application name
-      title: 'Flutter Hello World',
+      debugShowCheckedModeBanner: false,
       // Application theme data, you can set the colors for the application as
       // you want
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       // A widget which will be started on application startup
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
-  final String title;
-  const MyHomePage({super.key, required this.title});  
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  var color1 = Colors.yellow;
+  var color2 = Colors.blue;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         // The title text which will be shown on the action bar
-        title: Text(title),
+        title: Text("Home Page"),
       ),
-      body: Center(
-        child: Text(
-          'Hello, World!',
-        ),
+      body: AvailableColorsWidget(
+        color1: color1,
+        color2: color2,
+        child: Column(children: [
+          Row(
+            children: [
+              TextButton(
+                  onPressed: () {
+                    setState(() {
+                      color1 = colors.getRandomElement();
+                    });
+                  },
+                  child: const Text("Change color1")),
+              TextButton(
+                  onPressed: () {
+                    setState(() {
+                      color2 = colors.getRandomElement();
+                    });
+                  },
+                  child: const Text("Change color2")),
+            ],
+          ),
+          const ColorWidget(color: AvailableColors.one),
+          const ColorWidget(color: AvailableColors.two),
+        ]),
       ),
     );
   }
+}
+
+enum AvailableColors { one, two }
+
+class AvailableColorsWidget extends InheritedModel<AvailableColors> {
+  final MaterialColor color1;
+  final MaterialColor color2;
+
+  const AvailableColorsWidget(
+      {Key? key,
+      required this.color1,
+      required this.color2,
+      required Widget child})
+      : super(key: key, child: child);
+
+  //Allows descendants to get copy of AvailableColorsWidget
+  //Used by descendants
+  static AvailableColorsWidget of(
+      BuildContext context, AvailableColors aspect) {
+    return InheritedModel.inheritFrom<AvailableColorsWidget>(
+      context,
+      aspect: aspect,
+    )!;
+  }
+
+  @override
+  bool updateShouldNotify(covariant AvailableColorsWidget oldWidget) {
+    return color1 != oldWidget.color1 || color2 != oldWidget.color2;
+  }
+
+  //Called if updateShouldNotify is true
+  @override
+  bool updateShouldNotifyDependent(covariant AvailableColorsWidget oldWidget,
+      Set<AvailableColors> dependencies) {
+    devtools.log('updateShouldNotifyDependent');
+
+    if (dependencies.contains(AvailableColors.one) &&
+        color1 != oldWidget.color1) {
+      return true;
+    }
+
+    if (dependencies.contains(AvailableColors.two) &&
+        color2 != oldWidget.color2) {
+      return true;
+    }
+
+    return false;
+  }
+}
+
+class ColorWidget extends StatelessWidget {
+  final AvailableColors color;
+
+  const ColorWidget({super.key, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    switch (color) {
+      case AvailableColors.one:
+        devtools.log("Color1 widget got rebuilt");
+        break;
+      case AvailableColors.two:
+        devtools.log("Color2 widget got rebuilt");
+        break;
+    }
+
+    //Get provider copy
+    final provider = AvailableColorsWidget.of(context, color);
+
+    return Container(
+      height: 100,
+      color: color == AvailableColors.one ? provider.color1 : provider.color2,
+    );
+  }
+}
+
+final colors = [
+  Colors.blue,
+  Colors.red,
+  Colors.yellow,
+  Colors.orange,
+  Colors.purple,
+  Colors.cyan,
+  Colors.brown,
+  Colors.amber,
+  Colors.deepPurple,
+];
+
+extension RandomElement<T> on Iterable<T> {
+  T getRandomElement() => elementAt(Random().nextInt(length));
 }
